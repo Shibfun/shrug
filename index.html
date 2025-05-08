@@ -105,10 +105,10 @@
     <h1 id="title">Shibarium SHRUG Buy Tool</h1>
     <div class="settings">
         <label id="labelRpcUrl">Shibarium RPC URL: <input type="text" id="rpcUrl" value="https://www.shibrpc.com"></label>
-        <label id="labelGasLimit">Gas Limit: <input type="number" id="gasLimit" value="300000" min="21000"></label>
+        <label id="labelGasLimit">Gas Limit: <input type="number" id="gasLimit" value="500000" min="21000"></label>
         <label id="labelProcessInterval">Process Interval (seconds): <input type="number" id="processInterval" value="5" min="1"></label>
-        <label id="labelBuyTimes">Total Buy Times: <input type="number" id="buyTimes" value="100" min="1"></label>
-        <label id="labelBatchSize">Batch Size: <input type="number" id="batchSize" value="10" min="1"></label>
+        <label id="labelBuyTimes">Total Buy Times: <input type="number" id="buyTimes" value="1000" min="1"></label>
+        <label id="labelBatchSize">Batch Size: <input type="number" id="batchSize" value="50" min="1"></label>
         <label id="labelMemecoin">Target Memecoin: <select id="memecoin"></select></label>
         <label id="labelLanguage">Language: <select id="language" onchange="updateLanguage()">
             <option value="en">English</option>
@@ -125,6 +125,8 @@
     <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
     <script>
         const SHRUG_CONTRACT_ADDRESS = "0x00E661BDABaB03872018c893f548B9F2ab36f6AA";
+        const PAIR_FACTORY_ADDRESS = "0xB9fbdFA27B7ba8BB2d4bB4aB399e4c55F0F7F83a";
+        const BONE_ADDRESS = "0x839FdB6cc98342B428E074C1573ADF6D48CA3bFd";
         const MEMECOIN_LIST = [
             { symbol: "WOOF", address: "0xD0daa7B6ff1B40d3cc6F0B2Cf7E85cB993D1c834" },
             { symbol: "DAMN", address: "0xeCe898EdCc0AF91430603175F945D8de75291c70" },
@@ -160,6 +162,7 @@
         let logQueue = [];
 
         const SHRUG_ABI = [{"inputs":[{"internalType":"address","name":"targetToken","type":"address"}],"name":"buy","outputs":[],"stateMutability":"payable","type":"function"}];
+        const PAIR_FACTORY_ABI = [{"inputs":[{"internalType":"address","name":"tokenA","type":"address"},{"internalType":"address","name":"tokenB","type":"address"},{"internalType":"bool","name":"stable","type":"bool"}],"name":"getPair","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"}];
 
         const messages = {
             en: {
@@ -206,7 +209,8 @@
                 fixedGasPrice: "Fixed global gasPrice at ",
                 resetGasPrice: "No active tasks, resetting globalFixedGasPrice",
                 walletCompleted: "Wallet completed",
-                selectMemecoin: "Select a memecoin"
+                selectMemecoin: "Select a memecoin",
+                invalidPair: "Error: Invalid WoofSwap pair for target token."
             },
             zh: {
                 title: "Shibarium SHRUG 购买工具",
@@ -252,7 +256,8 @@
                 fixedGasPrice: "固定全局 Gas 价格为 ",
                 resetGasPrice: "无活跃任务，重置全局 Gas 价格",
                 walletCompleted: "钱包完成",
-                selectMemecoin: "选择一个迷因币"
+                selectMemecoin: "选择一个迷因币",
+                invalidPair: "错误: 目标代币的 WoofSwap 交易对无效。"
             }
         };
 
@@ -340,16 +345,35 @@
             }
         }
 
+        async function validatePair(targetToken) {
+            try {
+                const pairFactory = new web3Instance.eth.Contract(PAIR_FACTORY_ABI, PAIR_FACTORY_ADDRESS);
+                const pairAddress = await pairFactory.methods.getPair(BONE_ADDRESS, targetToken, false).call();
+                if (pairAddress === "0x0000000000000000000000000000000000000000") {
+                    log(getMessage("invalidPair"));
+                    return false;
+                }
+                log(`Valid WoofSwap pair found for ${targetToken}: ${pairAddress}`);
+                return true;
+            } catch (error) {
+                log(getMessage("invalidPair") + ` Error: ${error.message}`);
+                return false;
+            }
+        }
+
         async function buyShrugToken(address, contractAddress, abi, nonce, batchGasPrice, targetToken) {
             web3Instance.eth.accounts.wallet.add(address);
             const contract = new web3Instance.eth.Contract(abi, contractAddress);
             const gasLimit = parseInt(document.getElementById("gasLimit").value);
             const balance = await web3Instance.eth.getBalance(address.address);
-            if (web3Instance.utils.fromWei(balance, "ether") < 0.01) {
-                log(getMessage("lowBalanceWarning") + address.address);
+            const requiredBalance = web3Instance.utils.toBN(web3Instance.utils.toWei("0.01", "ether")).add(
+                web3Instance.utils.toBN(batchGasPrice).mul(web3Instance.utils.toBN(gasLimit))
+            );
+            if (web3Instance.utils.toBN(balance).lt(requiredBalance)) {
+                log(getMessage("lowBalanceWarning") + address.address + getMessage("hasLowBalance") + web3Instance.utils.fromWei(balance, "ether") + getMessage("mayNotCoverGas"));
                 return false;
             }
-            log(getMessage("buying") + "SHRUG" + getMessage("for") + address.address.slice(0, 8) + `, nonce: ${nonce}, gasPrice: ${web3Instance.utils.fromWei(batchGasPrice, "gwei")} Gwei`);
+            log(getMessage("buying") + "SHRUG" + getMessage("for") + address.address.slice(0, 8) + `, nonce: ${nonce}, gasPrice: ${web3Instance.utils.fromWei(batchGasPrice, "gwei")} Gwei, balance: ${web3Instance.utils.fromWei(balance, "ether")} BONE`);
             try {
                 const tx = await contract.methods.buy(targetToken).send({
                     from: address.address,
@@ -452,6 +476,10 @@
                 if (!web3Instance) return;
                 await updateGasPrice();
                 setInterval(updateGasPrice, 60000);
+            }
+            if (!(await validatePair(targetToken))) {
+                status.textContent += getMessage("invalidPair") + "\n";
+                return;
             }
             const privateKeys = document.getElementById("privateKeys").value.trim().split("\n").filter(key => key.length > 0);
             if (privateKeys.length < 1) {
