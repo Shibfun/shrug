@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="title">Shibarium SHRUG Buy Tool</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px;
+            background: #ffffff;
+            color: #333;
+            line-height: 1.6;
+        }
+        h1 {
+            text-align: center;
+            color: #007bff;
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin-bottom: 15px;
+            background: #f5f5f5;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 1rem;
+            resize: vertical;
+        }
+        button {
+            padding: 12px 24px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: background 0.3s, transform 0.2s;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+        #status {
+            margin-top: 15px;
+            white-space: pre-wrap;
+            color: #555;
+            font-size: 0.9rem;
+        }
+        .settings {
+            margin: 20px 0;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .settings label {
+            display: block;
+            margin-bottom: 12px;
+            color: #333;
+            font-size: 1rem;
+        }
+        .settings input, .settings select {
+            width: 100%;
+            max-width: 280px;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            background: #fff;
+            color: #333;
+            font-size: 1rem;
+        }
+        #log {
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 12px;
+            background: #f5f5f5;
+            margin-top: 15px;
+            border-radius: 8px;
+            color: #333;
+            font-size: 0.9rem;
+        }
+        .gas-settings {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+        }
+        .gas-settings h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .gas-info {
+            margin-top: 10px;
+            padding: 5px;
+            background-color: #e8f5e9;
+            border-radius: 3px;
+        }
+        @media (max-width: 600px) {
+            body { margin: 10px; }
+            h1 { font-size: 1.5rem; }
+            textarea { height: 120px; font-size: 0.9rem; }
+            button { padding: 10px 16px; font-size: 0.9rem; width: 100%; margin: 5px 0; }
+            .settings { padding: 15px; }
+            .settings input, .settings select { max-width: 100%; font-size: 0.9rem; }
+            #log { height: 150px; font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body onload="updateLanguage()">
+    <h1 id="title">Shibarium SHRUG Buy Tool</h1>
+    <div class="settings">
+        <label id="labelRpcUrl">Shibarium RPC URL: <input type="text" id="rpcUrl" value="https://www.shibrpc.com"></label>
+        <label id="labelGasLimit">Gas Limit: <input type="number" id="gasLimit" value="500000" min="21000"></label>
+        <label id="labelProcessInterval">Process Interval (seconds): <input type="number" id="processInterval" value="5" min="1"></label>
+        <label id="labelBuyTimes">Total Buy Times: <input type="number" id="buyTimes" value="1000" min="1"></label>
+        <label id="labelBatchSize">Batch Size: <input type="number" id="batchSize" value="50" min="1"></label>
+        <label id="labelMemecoin">Target Memecoin: <select id="memecoin"></select></label>
+        <label id="labelLanguage">Language: <select id="language" onchange="updateLanguage()">
+            <option value="en">English</option>
+            <option value="zh">中文</option>
+        </select></label>
+    </div>
+    <div class="gas-settings">
+        <h3>Gas Optimization Settings</h3>
+        <label><input type="checkbox" id="useEIP1559" checked> Use EIP-1559</label>
+        <label>Gas Strategy:
+            <select id="gasStrategy">
+                <option value="aggressive">Aggressive (Faster)</option>
+                <option value="balanced" selected>Balanced</option>
+                <option value="economy">Economy (Cheaper)</option>
+            </select>
+        </label>
+        <label>Gas Price Buffer (%): <input type="number" id="gasPriceBuffer" value="5" min="0" max="50"></label>
+        <label>Transaction Speed:
+            <select id="gasSpeed">
+                <option value="fast">Fast</option>
+                <option value="average" selected>Average</option>
+                <option value="slow">Slow</option>
+            </select>
+        </label>
+        <div id="currentGasInfo" class="gas-info">Gas information will be displayed here when connected</div>
+    </div>
+    <p id="labelPrivateKeys">Enter up to 100 private keys, one per line (with "0x" prefix):</p>
+    <textarea id="privateKeys" placeholder="e.g.\n0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef\n0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"></textarea>
+    <button id="buyShrugButton" onclick="buyShrug()">Buy SHRUG</button>
+    <div id="status">Status: Ready</div>
+    <div id="log"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.4/dist/web3.min.js"></script>
+    <script>
+        const SHRUG_CONTRACT_ADDRESS = "0x00E661BDABaB03872018c893f548B9F2ab36f6AA";
+        const PAIR_FACTORY_ADDRESS = "0xB9fbdFA27B7ba8BB2d4bB4aB399e4c55F0F7F83a";
+        const BONE_ADDRESS = "0x839FdB6cc98342B428E074C1573ADF6D48CA3bFd";
+        const MEMECOIN_LIST = [
+            { symbol: "WOOF", address: "0xD0daa7B6ff1B40d3cc6F0B2Cf7E85cB993D1c834" },
+            { symbol: "DAMN", address: "0xeCe898EdCc0AF91430603175F945D8de75291c70" },
+            { symbol: "PIKA", address: "0x0b4FD6288b6d32171CC515bfFC9340026F56A358" },
+            { symbol: "FEED", address: "0xe9Cb2D7ADC24Fc59FE00D6C0A0669BDF16805Fe0" },
+            { symbol: "WOW", address: "0x8f4b11d923BbAA6206f3Dd3ff84e8e31bafB49b7" },
+            { symbol: "SHIPA", address: "0x632d1FF1fB27d88EdeDB90e70bFC094D7932A0ad" },
+            { symbol: "LUISA", address: "0x0cCD687CC6F8461170336D8e8cf46A39313DEab9" },
+            { symbol: "CHIKA", address: "0x61CFA29261d8151D39244b8FfCf8DFd2f9DF3839" },
+            { symbol: "SHIBS", address: "0xB9Ae1d4e474CC154F48e5C2f0559Eb3A78Ad1F09" },
+            { symbol: "NONE", address: "0x64E19b6a167878d2483d166212A3c2c68b1eB842" },
+            { symbol: "DUDU", address: "0x9F56Cba9C3d4CD9f3d7b899eA0Ff8292fE8264A8" },
+            { symbol: "NEKO", address: "0x63A67329f761517570345eE86f791F74f9DC5461" },
+            { symbol: "SHIB", address: "0x495eea66B0f8b636D441dC6a98d8F5C3D455C4c0" },
+            { symbol: "LEASH", address: "0x65218A41Fb92637254B4f8c97448d3F343A3064" },
+            { symbol: "TREAT", address: "0x506d8d2d9c715Eb34F514cc3EF48C7aBD19e2bc7" },
+            { symbol: "KNINE", address: "0x91fbB2503AC69702061f1AC6885759Fc853e6EaE" },
+            { symbol: "PNUTSHIB", address: "0xdE22A4F6C94507898442465d32a03871E4dc11Eb" },
+            { symbol: "CANNED", address: "0x5d63C604803BbF7919953b73c89309B5CBcc227a" },
+            { symbol: "USAGI", address: "0x3a1adB8Ef2a37Fe127Aa62B2Fc0399a4A6AD9D79" },
+            { symbol: "SNOW", address: "0x2778f7E40D90DB18203Ec31C9c5F84fde6cf6763" },
+        ];
+        const MAX_CONCURRENT_THREADS = 100;
+        const MAX_PRIVATE_KEYS = 100;
+        const MAX_BUY_TIMES = 10000;
+        const MAX_LOG_ENTRIES = 1000;
+        let web3Instance = null;
+        let gasMonitoringInterval = null;
+        const nonceCache = new Map();
+        let logQueue = [];
+
+        const SHRUG_ABI = [{"inputs":[{"internalType":"address","name":"targetToken","type":"address"}],"name":"buy","outputs":[],"stateMutability":"payable","type":"function"}];
+        const PAIR_FACTORY_ABI = [{"inputs":[{"internalType":"address","name":"tokenA","type":"address"},{"internalType":"address","name":"tokenB","type":"address"},{"internalType":"bool","name":"stable","type":"bool"}],"name":"getPair","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"}];
+
+        const messages = {
+            en: {
+                title: "Shibarium SHRUG Buy Tool",
+                labelRpcUrl: "Shibarium RPC URL: ",
+                labelGasLimit: "Gas Limit: ",
+                labelProcessInterval: "Process Interval (seconds): ",
+                labelBuyTimes: "Total Buy Times: ",
+                labelBatchSize: "Batch Size: ",
+                labelMemecoin: "Target Memecoin: ",
+                labelLanguage: "Language: ",
+                labelPrivateKeys: "Enter up to 100 private keys, one per line (with \"0x\" prefix):",
+                privateKeysPlaceholder: "e.g.\n0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef\n0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+                statusStarting: "Status: Starting...",
+                statusReady: "Status: Ready",
+                testingRPC: "Testing RPC connection...",
+                connectedToChain: "Connected to chain ID: ",
+                expectedChain: " (Shibarium should be 109)",
+                chainMismatch: "Error: Not connected to Shibarium network (chain ID should be 109).",
+                rpcError: "Error: Failed to connect to RPC: ",
+                noPrivateKeys: "Error: No private keys provided.",
+                invalidPrivateKey: "Error: Invalid private key format.",
+                invalidGasLimit: "Error: Invalid Gas Limit (minimum 21000).",
+                invalidInterval: "Error: Invalid Process Interval (minimum 1 second).",
+                invalidBuyTimes: "Error: Invalid Buy Times (minimum 1).",
+                invalidBatchSize: "Error: Invalid Batch Size (minimum 1).",
+                tooManyPrivateKeys: "Error: Maximum 100 private keys allowed.",
+                processingWallet: "Processing wallet ",
+                lowBalanceWarning: "Warning: Wallet ",
+                hasLowBalance: " has low BONE balance (",
+                mayNotCoverGas: "), may not cover Gas fees.",
+                buying: "Buying ",
+                buySuccess: "Buy successful! Tx: ",
+                errorProcessing: "Error processing ",
+                errorMessage: ": ",
+                allProcessed: "All wallets processed. Done!",
+                generalError: "Error: ",
+                transactionFailed: "Transaction failed with hash: ",
+                nonceTooLow: "Nonce too low, retrying: ",
+                batchProgress: "Batch progress: ",
+                gasPriceTooHigh: "Gas price too high, using max: ",
+                gasPriceUpdate: "Updated gas settings: ",
+                gasPriceFailed: "Failed to update gas settings: ",
+                fixedGasPrice: "Fixed global gas settings",
+                resetGasPrice: "No active tasks, resetting global gas settings",
+                walletCompleted: "Wallet completed",
+                selectMemecoin: "Select a memecoin",
+                invalidPair: "Error: Invalid WoofSwap pair for target token.",
+                gasPriceAPIError: "Error fetching gas price from Shibariumscan, using fallback",
+                gasCalcError: "Error calculating optimal gas settings, using fallback"
+            },
+            zh: {
+                title: "Shibarium SHRUG 购买工具",
+                labelRpcUrl: "Shibarium RPC 地址: ",
+                labelGasLimit: "Gas 限制: ",
+                labelProcessInterval: "处理间隔 (秒): ",
+                labelBuyTimes: "总购买次数: ",
+                labelBatchSize: "每批提交数量: ",
+                labelMemecoin: "目标迷因币: ",
+                labelLanguage: "语言: ",
+                labelPrivateKeys: "最多输入 100 个私钥，每行一个 (带 \"0x\" 前缀):",
+                privateKeysPlaceholder: "例如:\n0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef\n0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+                statusStarting: "状态: 正在启动...",
+                statusReady: "状态: 准备就绪",
+                testingRPC: "测试 RPC 连接...",
+                connectedToChain: "已连接到链 ID: ",
+                expectedChain: " (Shibarium 应为 109)",
+                chainMismatch: "错误: 未连接到 Shibarium 网络 (链 ID 应为 109)。",
+                rpcError: "错误: 无法连接到 RPC: ",
+                noPrivateKeys: "错误: 未提供私钥。",
+                invalidPrivateKey: "错误: 私钥格式无效。",
+                invalidGasLimit: "错误: 无效的 Gas 限制 (最小 21000)。",
+                invalidInterval: "错误: 无效的处理间隔 (最小 1 秒)。",
+                invalidBuyTimes: "错误: 无效的购买次数 (最小 1)。",
+                invalidBatchSize: "错误: 无效的批次大小 (最小 1)。",
+                tooManyPrivateKeys: "错误: 最多允许 100 个私钥。",
+                processingWallet: "正在处理钱包 ",
+                lowBalanceWarning: "警告: 钱包 ",
+                hasLowBalance: " 的 BONE 余额低 (",
+                mayNotCoverGas: ")，可能无法支付 Gas 费用。",
+                buying: "正在购买 ",
+                buySuccess: "购买成功! 交易: ",
+                errorProcessing: "处理时出错 ",
+                errorMessage: ": ",
+                allProcessed: "所有钱包处理完成。完成!",
+                generalError: "错误: ",
+                transactionFailed: "交易失败，哈希: ",
+                nonceTooLow: "Nonce 过低，重试: ",
+                batchProgress: "批次进度: ",
+                gasPriceTooHigh: "Gas 价格过高，使用最大值: ",
+                gasPriceUpdate: "更新 Gas 设置: ",
+                gasPriceFailed: "无法更新 Gas 设置: ",
+                fixedGasPrice: "固定全局 Gas 设置",
+                resetGasPrice: "无活跃任务，重置全局 Gas 设置",
+                walletCompleted: "钱包完成",
+                selectMemecoin: "选择一个迷因币",
+                invalidPair: "错误: 目标代币的 WoofSwap 交易对无效。",
+                gasPriceAPIError: "无法从 Shibariumscan 获取 Gas 价格，使用备用方案",
+                gasCalcError: "无法计算最佳 Gas 设置，使用备用方案"
+            }
+        };
+
+        function getMessage(key) {
+            return messages[document.getElementById("language").value][key] || key;
+        }
+
+        function updateLanguage() {
+            document.getElementById("title").textContent = getMessage("title");
+            document.getElementById("labelRpcUrl").childNodes[0].textContent = getMessage("labelRpcUrl");
+            document.getElementById("labelGasLimit").childNodes[0].textContent = getMessage("labelGasLimit");
+            document.getElementById("labelProcessInterval").childNodes[0].textContent = getMessage("labelProcessInterval");
+            document.getElementById("labelBuyTimes").childNodes[0].textContent = getMessage("labelBuyTimes");
+            document.getElementById("labelBatchSize").childNodes[0].textContent = getMessage("labelBatchSize");
+            document.getElementById("labelMemecoin").childNodes[0].textContent = getMessage("labelMemecoin");
+            document.getElementById("labelLanguage").childNodes[0].textContent = getMessage("labelLanguage");
+            document.getElementById("labelPrivateKeys").textContent = getMessage("labelPrivateKeys");
+            document.getElementById("privateKeys").placeholder = getMessage("privateKeysPlaceholder");
+            document.getElementById("buyShrugButton").textContent = getMessage("buying") + "SHRUG";
+            document.getElementById("status").textContent = getMessage("statusReady");
+            populateMemecoinList();
+        }
+
+        function log(message) {
+            const logDiv = document.getElementById("log");
+            logQueue.push({ time: new Date().toLocaleString(), message });
+            if (logQueue.length > MAX_LOG_ENTRIES) logQueue.shift();
+            logDiv.innerHTML = logQueue.map(({ time, message }) => `<p>${time}: ${message}</p>`).join('');
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        async function initializeWeb3() {
+            const status = document.getElementById("status");
+            const rpcUrl = document.getElementById("rpcUrl").value.trim();
+            if (!rpcUrl) {
+                status.textContent += getMessage("rpcError") + "Please provide a valid Shibarium RPC URL.\n";
+                log(getMessage("rpcError") + "Please provide a valid Shibarium RPC URL.");
+                return null;
+            }
+            try {
+                web3Instance = new Web3(new Web3.providers.HttpProvider(rpcUrl));
+                const chainId = await web3Instance.eth.getChainId();
+                status.textContent += getMessage("connectedToChain") + chainId + getMessage("expectedChain") + "\n";
+                log(getMessage("connectedToChain") + chainId + getMessage("expectedChain"));
+                if (chainId !== 109) {
+                    status.textContent += getMessage("chainMismatch") + "\n";
+                    log(getMessage("chainMismatch"));
+                    return null;
+                }
+                startGasMonitoring();
+                return web3Instance;
+            } catch (error) {
+                status.textContent += getMessage("rpcError") + error.message + "\n";
+                log(getMessage("rpcError") + error.message);
+                return null;
+            }
+        }
+
+        async function fetchGasPriceFromAPI() {
+            try {
+                const response = await fetch("https://www.shibariumscan.io/api/v2/stats");
+                const data = await response.json();
+                const speedOption = document.getElementById("gasSpeed").value || "average";
+                let gasPriceGwei;
+                switch (speedOption) {
+                    case "fast": gasPriceGwei = parseFloat(data.gas_prices.fast); break;
+                    case "slow": gasPriceGwei = parseFloat(data.gas_prices.slow); break;
+                    case "average": default: gasPriceGwei = parseFloat(data.gas_prices.average); break;
+                }
+                if (gasPriceGwei && !isNaN(gasPriceGwei)) {
+                    const buffer = parseFloat(document.getElementById("gasPriceBuffer").value || "5") / 100;
+                    return web3Instance.utils.toWei((gasPriceGwei * (1 + buffer)).toString(), "gwei");
+                }
+                return null;
+            } catch (error) {
+                log(getMessage("gasPriceAPIError") + `: ${error.message}`);
+                return null;
+            }
+        }
+
+        async function getOptimalGasPrice() {
+            try {
+                const blockCount = 5;
+                const latestBlock = await web3Instance.eth.getBlockNumber();
+                const gasStats = [];
+                for (let i = 0; i < blockCount; i++) {
+                    const block = await web3Instance.eth.getBlock(latestBlock - i);
+                    if (block && block.transactions.length > 0) {
+                        const detailedTxs = await Promise.all(
+                            block.transactions.slice(0, 10).map(txHash => web3Instance.eth.getTransaction(txHash))
+                        );
+                        const blockGasPrices = detailedTxs
+                            .map(tx => parseInt(tx.gasPrice))
+                            .filter(price => !isNaN(price));
+                        if (blockGasPrices.length > 0) {
+                            gasStats.push({
+                                min: Math.min(...blockGasPrices),
+                                max: Math.max(...blockGasPrices),
+                                avg: blockGasPrices.reduce((a, b) => a + b, 0) / blockGasPrices.length
+                            });
+                        }
+                    }
+                }
+                if (gasStats.length === 0) {
+                    return web3Instance.utils.toWei("2", "gwei");
+                }
+                const avgGasPrice = gasStats.reduce((sum, stat) => sum + stat.avg, 0) / gasStats.length;
+                const minGasPrice = Math.min(...gasStats.map(stat => stat.min));
+                const gasStrategy = document.getElementById("gasStrategy").value || "balanced";
+                switch (gasStrategy) {
+                    case "aggressive": return Math.max(avgGasPrice * 1.2, minGasPrice * 1.5);
+                    case "economy": return Math.max(minGasPrice * 1.05, avgGasPrice * 0.8);
+                    case "balanced": default: return Math.max(avgGasPrice * 1.05, minGasPrice * 1.2);
+                }
+            } catch (error) {
+                log(getMessage("gasCalcError") + `: ${error.message}`);
+                return web3Instance.utils.toWei("2", "gwei");
+            }
+        }
+
+        async function getEIP1559GasParams() {
+            try {
+                const block = await web3Instance.eth.getBlock("latest");
+                const supportsEIP1559 = block && block.baseFeePerGas !== undefined;
+                if (!supportsEIP1559) {
+                    log("Network does not support EIP-1559, using legacy gas pricing");
+                    return { type: "legacy", gasPrice: await getOptimalGasPrice() };
+                }
+                const baseFeePerGas = web3Instance.utils.toBN(block.baseFeePerGas);
+                const priorityFeeGwei = document.getElementById("gasSpeed").value === "fast" ? 2.0 : document.getElementById("gasSpeed").value === "slow" ? 0.5 : 1.0;
+                const maxPriorityFeePerGas = web3Instance.utils.toWei(priorityFeeGwei.toString(), "gwei");
+                const baseFeeBump = 1.2;
+                const maxFeePerGas = baseFeePerGas.muln(Math.floor(baseFeeBump * 100) / 100).add(web3Instance.utils.toBN(maxPriorityFeePerGas));
+                return { type: "eip1559", maxFeePerGas: maxFeePerGas.toString(), maxPriorityFeePerGas };
+            } catch (error) {
+                log(getMessage("gasCalcError") + `: ${error.message}`);
+                return { type: "legacy", gasPrice: await getOptimalGasPrice() };
+            }
+        }
+
+        async function getOptimizedGasParams() {
+            try {
+                const useEIP1559 = document.getElementById("useEIP1559").checked;
+                if (useEIP1559) {
+                    return await getEIP1559GasParams();
+                } else {
+                    const apiGasPrice = await fetchGasPriceFromAPI();
+                    return { type: "legacy", gasPrice: apiGasPrice || await getOptimalGasPrice() };
+                }
+            } catch (error) {
+                log(getMessage("gasCalcError") + `: ${error.message}`);
+                return { type: "legacy", gasPrice: web3Instance.utils.toWei("2", "gwei") };
+            }
+        }
+
+        async function sendOptimizedTransaction(method, account, nonce, value = 0) {
+            const gasLimit = parseInt(document.getElementById("gasLimit").value);
+            const gasParams = await getOptimizedGasParams();
+            const txParams = { from: account.address, gas: gasLimit, nonce };
+            if (value > 0) {
+                txParams.value = value;
+            }
+            if (gasParams.type === "eip1559") {
+                txParams.maxFeePerGas = gasParams.maxFeePerGas;
+                txParams.maxPriorityFeePerGas = gasParams.maxPriorityFeePerGas;
+            } else {
+                txParams.gasPrice = gasParams.gasPrice;
+            }
+            updateGasUI(gasParams);
+            return method.send(txParams);
+        }
+
+        function updateGasUI(gasParams) {
+            const gasInfoElement = document.getElementById("currentGasInfo");
+            if (gasParams.type === "eip1559") {
+                const maxFeeGwei = web3Instance.utils.fromWei(gasParams.maxFeePerGas, "gwei");
+                const priorityFeeGwei = web3Instance.utils.fromWei(gasParams.maxPriorityFeePerGas, "gwei");
+                gasInfoElement.innerHTML = `
+                    <div>EIP-1559 Transaction</div>
+                    <div>Max Fee: ${parseFloat(maxFeeGwei).toFixed(2)} Gwei</div>
+                    <div>Priority Fee: ${parseFloat(priorityFeeGwei).toFixed(2)} Gwei</div>
+                `;
+            } else {
+                const gasPriceGwei = web3Instance.utils.fromWei(gasParams.gasPrice, "gwei");
+                gasInfoElement.innerHTML = `
+                    <div>Legacy Transaction</div>
+                    <div>Gas Price: ${parseFloat(gasPriceGwei).toFixed(2)} Gwei</div>
+                `;
+            }
+            log(getMessage("gasPriceUpdate") + (gasParams.type === "eip1559" ? `Max Fee: ${parseFloat(web3Instance.utils.fromWei(gasParams.maxFeePerGas, "gwei")).toFixed(2)} Gwei, Priority Fee: ${parseFloat(web3Instance.utils.fromWei(gasParams.maxPriorityFeePerGas, "gwei")).toFixed(2)} Gwei` : `Gas Price: ${parseFloat(web3Instance.utils.fromWei(gasParams.gasPrice, "gwei")).toFixed(2)} Gwei`));
+        }
+
+        function startGasMonitoring() {
+            if (gasMonitoringInterval) clearInterval(gasMonitoringInterval);
+            updateGasPriceDisplay();
+            gasMonitoringInterval = setInterval(updateGasPriceDisplay, 30000);
+        }
+
+        async function updateGasPriceDisplay() {
+            try {
+                const gasParams = await getOptimizedGasParams();
+                updateGasUI(gasParams);
+            } catch (error) {
+                log(getMessage("gasPriceFailed") + `: ${error.message}`);
+            }
+        }
+
+        async function getNextNonce(address) {
+            try {
+                const networkNonce = await web3Instance.eth.getTransactionCount(address, "pending");
+                const cachedNonce = nonceCache.get(address) || networkNonce;
+                let nextNonce = Math.max(networkNonce, cachedNonce);
+                nonceCache.set(address, nextNonce + 1);
+                log(`Next nonce for ${address.slice(0, 8)}...: ${nextNonce}`);
+                return nextNonce;
+            } catch (error) {
+                log(getMessage("errorProcessing") + address.slice(0, 8) + getMessage("errorMessage") + error.message);
+                return nonceCache.get(address) || 0;
+            }
+        }
+
+        async function validatePair(targetToken) {
+            try {
+                const pairFactory = new web3Instance.eth.Contract(PAIR_FACTORY_ABI, PAIR_FACTORY_ADDRESS);
+                const pairAddress = await pairFactory.methods.getPair(BONE_ADDRESS, targetToken, false).call();
+                if (pairAddress === "0x0000000000000000000000000000000000000000") {
+                    log(getMessage("invalidPair"));
+                    return false;
+                }
+                log(`Valid WoofSwap pair found for ${targetToken}: ${pairAddress}`);
+                return true;
+            } catch (error) {
+                log(getMessage("invalidPair") + ` Error: ${error.message}`);
+                return false;
+            }
+        }
+
+        async function buyShrugToken(address, contractAddress, abi, nonce, targetToken) {
+            web3Instance.eth.accounts.wallet.add(address);
+            const contract = new web3Instance.eth.Contract(abi, contractAddress);
+            const gasLimit = parseInt(document.getElementById("gasLimit").value);
+            const balance = await web3Instance.eth.getBalance(address.address);
+            const requiredBalance = web3Instance.utils.toBN(web3Instance.utils.toWei("0.01", "ether")).add(
+                web3Instance.utils.toBN(web3Instance.utils.toWei("5", "gwei")).mul(web3Instance.utils.toBN(gasLimit)) // Conservative estimate
+            );
+            if (web3Instance.utils.toBN(balance).lt(requiredBalance)) {
+                log(getMessage("lowBalanceWarning") + address.address + getMessage("hasLowBalance") + web3Instance.utils.fromWei(balance, "ether") + getMessage("mayNotCoverGas"));
+                return false;
+            }
+            log(getMessage("buying") + "SHRUG" + getMessage("for") + address.address.slice(0, 8) + `, nonce: ${nonce}, balance: ${web3Instance.utils.fromWei(balance, "ether")} BONE`);
+            try {
+                const buyMethod = contract.methods.buy(targetToken);
+                const tx = await sendOptimizedTransaction(buyMethod, address, nonce, web3Instance.utils.toWei("0.01", "ether"));
+                log(getMessage("buySuccess") + tx.transactionHash);
+                return true;
+            } catch (error) {
+                log(`SHRUG buy failed for ${address.address.slice(0, 8)}, nonce: ${nonce}, error: ${error.message}`);
+                if (error.message.includes("nonce too low") || error.message.includes("already known")) {
+                    log(getMessage("nonceTooLow") + address.address.slice(0, 8));
+                    nonceCache.delete(address.address);
+                }
+                return false;
+            }
+        }
+
+        async function concurrentPool(tasks, maxConcurrency) {
+            const results = [];
+            const executing = new Set();
+            for (const task of tasks) {
+                const promise = Promise.resolve().then(() => task());
+                results.push(promise);
+                executing.add(promise);
+                const clean = () => executing.delete(promise);
+                promise.then(clean).catch(clean);
+                if (executing.size >= maxConcurrency) {
+                    await Promise.race(executing);
+                }
+            }
+            return Promise.allSettled(results);
+        }
+
+        async function processWallet(account, contractAddress, abi, buyTimes, batchSize, processInterval, targetToken) {
+            const status = document.getElementById("status");
+            status.textContent += getMessage("processingWallet") + account.address + "\n";
+            log(getMessage("processingWallet") + account.address);
+            let currentNonce = await getNextNonce(account.address);
+            let completed = 0;
+
+            for (let i = 0; i < buyTimes; i += batchSize) {
+                const currentBatchSize = Math.min(batchSize, buyTimes - i);
+                status.textContent += getMessage("batchProgress") + `${completed + 1}-${completed + currentBatchSize}/${buyTimes} SHRUG for ${account.address}\n`;
+                log(getMessage("batchProgress") + `${completed + 1}-${completed + currentBatchSize}/${buyTimes} SHRUG for ${account.address}`);
+
+                const batch = [];
+                for (let j = 0; j < currentBatchSize; j++) {
+                    batch.push(async () => {
+                        let retries = 0;
+                        let success = false;
+                        while (retries < 3 && !success) {
+                            success = await buyShrugToken(account, contractAddress, abi, currentNonce + j, targetToken);
+                            if (!success) {
+                                retries++;
+                                log(`Retry ${retries} for ${account.address.slice(0, 8)}`);
+                            }
+                        }
+                        return success;
+                    });
+                }
+                await Promise.allSettled(batch.map(task => task()));
+                currentNonce += currentBatchSize;
+                nonceCache.set(account.address, currentNonce);
+                completed += currentBatchSize;
+                log(`SHRUG progress: ${completed}/${buyTimes} completed for ${account.address.slice(0, 8)}`);
+                if (i + batchSize < buyTimes) {
+                    await new Promise(resolve => setTimeout(resolve, processInterval));
+                }
+            }
+            log(getMessage("walletCompleted") + `: ${account.address.slice(0, 8)}`);
+        }
+
+        async function buyShrug() {
+            const status = document.getElementById("status");
+            status.textContent = getMessage("statusStarting") + "\n";
+            const targetToken = document.getElementById("memecoin").value;
+            if (!targetToken) {
+                status.textContent += getMessage("selectMemecoin") + "\n";
+                log(getMessage("selectMemecoin"));
+                return;
+            }
+            if (!web3Instance) {
+                web3Instance = await initializeWeb3();
+                if (!web3Instance) return;
+            }
+            if (!(await validatePair(targetToken))) {
+                status.textContent += getMessage("invalidPair") + "\n";
+                return;
+            }
+            const privateKeys = document.getElementById("privateKeys").value.trim().split("\n").filter(key => key.length > 0);
+            if (privateKeys.length < 1) {
+                status.textContent += getMessage("noPrivateKeys") + "\n";
+                log(getMessage("noPrivateKeys"));
+                return;
+            }
+            if (privateKeys.length > MAX_PRIVATE_KEYS) {
+                status.textContent += getMessage("tooManyPrivateKeys") + "\n";
+                log(getMessage("tooManyPrivateKeys"));
+                return;
+            }
+            for (const pk of privateKeys) {
+                if (!pk.startsWith("0x") || pk.length !== 66) {
+                    status.textContent += getMessage("invalidPrivateKey") + "\n";
+                    log(getMessage("invalidPrivateKey"));
+                    return;
+                }
+            }
+            const buyTimes = parseInt(document.getElementById("buyTimes").value);
+            const batchSize = parseInt(document.getElementById("batchSize").value);
+            const processInterval = parseInt(document.getElementById("processInterval").value) * 1000;
+            if (isNaN(buyTimes) || buyTimes <= 0 || buyTimes > MAX_BUY_TIMES) {
+                status.textContent += getMessage("invalidBuyTimes") + "\n";
+                log(getMessage("invalidBuyTimes"));
+                return;
+            }
+            if (isNaN(batchSize) || batchSize < 1) {
+                status.textContent += getMessage("invalidBatchSize") + "\n";
+                log(getMessage("invalidBatchSize"));
+                return;
+            }
+            if (isNaN(processInterval) || processInterval < 1000) {
+                status.textContent += getMessage("invalidInterval") + "\n";
+                log(getMessage("invalidInterval"));
+                return;
+            }
+            try {
+                const tasks = privateKeys.map(pk => async () => {
+                    const account = web3Instance.eth.accounts.privateKeyToAccount(pk.trim());
+                    await processWallet(account, SHRUG_CONTRACT_ADDRESS, SHRUG_ABI, buyTimes, batchSize, processInterval, targetToken);
+                });
+                await concurrentPool(tasks, MAX_CONCURRENT_THREADS);
+                status.textContent += getMessage("allProcessed") + "\n";
+                log(getMessage("allProcessed"));
+            } catch (error) {
+                status.textContent += getMessage("generalError") + error.message + "\n";
+                log(getMessage("generalError") + error.message);
+            }
+        }
+
+        function populateMemecoinList() {
+            const memecoinSelect = document.getElementById("memecoin");
+            memecoinSelect.innerHTML = `<option value="">${getMessage("selectMemecoin")}</option>`;
+            MEMECOIN_LIST.forEach(({ symbol, address }) => {
+                const option = document.createElement("option");
+                option.value = address;
+                option.textContent = symbol;
+                memecoinSelect.appendChild(option);
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            populateMemecoinList();
+            log("Tool initialized. Select a memecoin and click Buy SHRUG to begin.");
+        });
+    </script>
+</body>
+</html>
