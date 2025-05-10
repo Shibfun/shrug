@@ -60,7 +60,7 @@
         <h1>Shrug Whitepaper</h1>
         <div class="section">
             <h2>1. Project Overview</h2>
-            <p>Shrug is a decentralized token project built on the Ethereum blockchain, designed to facilitate an innovative token purchase and reward mechanism integrated with the WoofSwap decentralized exchange. The Shrug token (symbol: SHRUG) is an ERC20 token that incentivizes participation in the memecoin ecosystem. Users can purchase whitelisted memecoins using a fixed amount of BONE tokens and receive SHRUG tokens as a reward. Shrug aims to promote engagement in the memecoin market while ensuring security and transparency.</p>
+            <p>Shrug is a decentralized token project deployed on the Shibarium blockchain, a layer-2 solution for the Shiba Inu ecosystem. Integrated with the WoofSwap decentralized exchange, Shrug introduces an innovative mechanism for purchasing whitelisted memecoins and rewarding users with Shrug tokens (symbol: SHRUG), an ERC20 token. Users can pay a fixed amount of BONE to acquire supported memecoins and receive SHRUG tokens as an incentive. Shrug aims to foster engagement within the Shibarium memecoin ecosystem while ensuring security, transparency, and decentralization.</p>
             <div class="highlight">
                 <p><strong>Core Functionality</strong>: Users pay 0.01 BONE to purchase whitelisted memecoins via WoofSwap and receive 1,000,000 SHRUG tokens as a reward.</p>
             </div>
@@ -83,51 +83,56 @@
         <div class="section">
             <h2>3. Core Mechanisms</h2>
             <h3>3.1 Purchase Mechanism</h3>
-            <p>Users can participate in the Shrug ecosystem by calling the <code>buy</code> function, which requires sending exactly 0.01 BONE to purchase a whitelisted memecoin. The process is as follows:</p>
+            <p>Users participate in the Shrug ecosystem by calling the <code>buy</code> function, sending exactly 0.01 BONE to purchase a whitelisted memecoin. The process includes:</p>
             <ul>
-                <li><strong>Input Validation</strong>: The contract verifies that the sent amount is 0.01 BONE and the target token is a whitelisted memecoin with a valid WoofSwap pair.</li>
+                <li><strong>Input Validation</strong>: The contract verifies the sent amount (0.01 BONE), ensures the target token is whitelisted, and confirms a valid WoofSwap pair exists.</li>
                 <li><strong>Swap Execution</strong>: The contract interacts with the WoofSwap router (<code>0x96b16aBD53Bfd765F4CD118590C1d0be8B57DE24</code>) to swap BONE for the target memecoin, applying a 95% slippage tolerance and a 300-second deadline extension.</li>
                 <li><strong>Reward Distribution</strong>: Upon successful swap, the user receives 1,000,000 SHRUG tokens, provided the total supply does not exceed the maximum limit.</li>
             </ul>
-            <p>The purchase process is secured by the <code>nonReentrant</code> modifier to prevent reentrancy attacks and ensure transaction integrity.</p>
+            <p>The purchase process is secured by the <code>nonReentrant</code> modifier to prevent reentrancy attacks.</p>
 
             <h3>3.2 Memecoin Whitelisting</h3>
-            <p>Only the contract owner can manage the memecoin whitelist via the <code>addMemecoins</code> and <code>removeMemecoin</code> functions. This ensures that only verified memecoins with valid WoofSwap pairs are eligible for purchase, maintaining ecosystem quality.</p>
+            <p>The contract owner manages the memecoin whitelist using the <code>addMemecoins</code> and <code>removeMemecoin</code> functions. Currently, the following memecoins are supported:</p>
+            <ul>
+                <li>WOOF, DAMN, PIKA, FEED, WOW, SHIPA, LUISA, CHIKA, SHIBS, NONE</li>
+                <li>DUDU, NEKO, SHIB, LEASH, TREAT, KNINE, PNUTSHIB, CANNED, USAGI, SNOW</li>
+            </ul>
+            <p>Only whitelisted memecoins with valid WoofSwap pairs are eligible for purchase, ensuring ecosystem quality and reliability.</p>
 
             <h3>3.3 Fund Management</h3>
-            <p>The contract includes mechanisms for the owner to withdraw accumulated funds:</p>
+            <p>The contract provides mechanisms for the owner to manage accumulated funds:</p>
             <ul>
                 <li><strong>withdrawBone</strong>: Transfers ERC20 BONE tokens (<code>0x839FdB6cc98342B428E074C1573ADF6D48CA3bFd</code>) held by the contract to the owner.</li>
                 <li><strong>emergencyWithdraw</strong>: Transfers native BONE (or other native tokens) held by the contract to the owner in case of emergencies.</li>
             </ul>
-            <p>Both functions are restricted to the owner and protected by the <code>nonReentrant</code> modifier for security.</p>
+            <p>Both functions are restricted to the owner and protected by the <code>nonReentrant</code> modifier.</p>
         </div>
 
         <div class="section">
             <h2>4. Security Features</h2>
-            <p>Shrug prioritizes security and reliability through the following measures:</p>
+            <p>Shrug prioritizes security through the following measures:</p>
             <ul>
-                <li><strong>Ownership Control</strong>: Only the contract owner can perform sensitive operations like whitelisting memecoins or withdrawing funds, enforced by the <code>onlyOwner</code> modifier.</li>
-                <li><strong>Reentrancy Protection</strong>: The <code>nonReentrant</code> modifier prevents reentrancy attacks during fund withdrawals and token purchases.</li>
-                <li><strong>Slippage Protection</strong>: A 95% slippage tolerance is applied during swaps to protect users from excessive price volatility.</li>
-                <li><strong>Input Validation</strong>: The contract enforces strict checks on token addresses, amounts, and pair validity to prevent errors or exploits.</li>
+                <li><strong>Ownership Control</strong>: Sensitive operations (e.g., whitelisting, fund withdrawals) are restricted to the owner via the <code>onlyOwner</code> modifier.</li>
+                <li><strong>Reentrancy Protection</strong>: The <code>nonReentrant</code> modifier prevents reentrancy attacks during purchases and withdrawals.</li>
+                <li><strong>Slippage Protection</strong>: A 95% slippage tolerance is enforced during swaps to mitigate price volatility risks.</li>
+                <li><strong>Input Validation</strong>: Strict checks on token addresses, amounts, and pair validity prevent errors or exploits.</li>
             </ul>
         </div>
 
         <div class="section">
-            <h2>5. Integration with WoofSwap</h2>
-            <p>Shrug leverages the WoofSwap decentralized exchange for its swap functionality. Key integrations include:</p>
+            <h2>5. Integration with Shibarium and WoofSwap</h2>
+            <p>Shrug operates on Shibarium, a layer-2 blockchain designed for the Shiba Inu ecosystem, offering low-cost and high-speed transactions. It integrates with WoofSwap for seamless token swaps, utilizing the following components:</p>
             <ul>
-                <li><strong>Router</strong>: <code>0x96b16aBD53Bfd765F4CD118590C1d0be8B57DE24</code> for executing token swaps.</li>
+                <li><strong>WoofSwap Router</strong>: <code>0x96b16aBD53Bfd765F4CD118590C1d0be8B57DE24</code> for executing swaps.</li>
                 <li><strong>Pair Factory</strong>: <code>0xB9fbdFA27B7ba8BB2d4bB4aB399e4c55F0F7F83a</code> for verifying valid trading pairs.</li>
-                <li><strong>BONE Token</strong>: <code>0x839FdB6cc98342B428E074C1573ADF6D48CA3bFd</code> as the primary input token for purchases.</li>
+                <li><strong>BONE Token</strong>: <code>0x839FdB6cc98342B428E074C1573ADF6D48CA3bFd</code> as the primary input token.</li>
             </ul>
-            <p>This integration ensures seamless and trustless token swaps, aligning with Shrug's decentralized ethos.</p>
+            <p>This integration ensures efficient, trustless swaps within the Shibarium ecosystem.</p>
         </div>
 
         <div class="section">
             <h2>6. Conclusion</h2>
-            <p>Shrug introduces a novel approach to memecoin engagement by combining token purchases with a rewarding SHRUG token distribution model. By integrating with WoofSwap and prioritizing security, Shrug offers a transparent and user-friendly platform for memecoin enthusiasts. The project is designed to foster participation in the memecoin ecosystem while maintaining fairness and decentralization.</p>
+            <p>Shrug offers a unique approach to memecoin engagement on Shibarium by combining token purchases with a rewarding SHRUG token distribution model. With a curated whitelist of memecoins, robust security features, and seamless integration with WoofSwap, Shrug provides a transparent and user-friendly platform for memecoin enthusiasts. The project is designed to drive participation in the Shibarium memecoin ecosystem while upholding decentralization and fairness.</p>
         </div>
     </div>
 </body>
