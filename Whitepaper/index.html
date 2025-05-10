@@ -99,21 +99,10 @@
             </ul>
             <p>Only whitelisted memecoins with valid WoofSwap pairs are eligible for purchase, ensuring ecosystem quality and reliability.</p>
 
-            <h3>3.3 Fund Management</h3>
-            <p>The contract provides mechanisms for the owner to manage accumulated funds:</p>
-            <ul>
-                <li><strong>withdrawBone</strong>: Transfers ERC20 BONE tokens (<code>0x839FdB6cc98342B428E074C1573ADF6D48CA3bFd</code>) held by the contract to the owner.</li>
-                <li><strong>emergencyWithdraw</strong>: Transfers native BONE (or other native tokens) held by the contract to the owner in case of emergencies.</li>
-            </ul>
-            <p>Both functions are restricted to the owner and protected by the <code>nonReentrant</code> modifier.</p>
-        </div>
-
         <div class="section">
             <h2>4. Security Features</h2>
             <p>Shrug prioritizes security through the following measures:</p>
             <ul>
-                <li><strong>Ownership Control</strong>: Sensitive operations (e.g., whitelisting, fund withdrawals) are restricted to the owner via the <code>onlyOwner</code> modifier.</li>
-                <li><strong>Reentrancy Protection</strong>: The <code>nonReentrant</code> modifier prevents reentrancy attacks during purchases and withdrawals.</li>
                 <li><strong>Slippage Protection</strong>: A 95% slippage tolerance is enforced during swaps to mitigate price volatility risks.</li>
                 <li><strong>Input Validation</strong>: Strict checks on token addresses, amounts, and pair validity prevent errors or exploits.</li>
             </ul>
